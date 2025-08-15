@@ -1,21 +1,28 @@
 from odoo import http
 from odoo.http import request
-from odoo.addons.auth_signup.controllers.main import AuthSignupHome
 
-class WebsiteSignupCompany(AuthSignupHome):
+class CustomAuthSignup(http.Controller):
 
-    def do_signup(self, qcontext):
-        user = super().do_signup(qcontext)
+    @http.route('/web/signup', type='http', auth='public', website=True, sitemap=False)
+    def web_auth_signup(self, *args, **kw):
+        response = super(CustomAuthSignup, self).web_auth_signup(*args, **kw)
+
+        # After signup, get the new user
+        login = kw.get('login')
+        user = request.env['res.users'].sudo().search([('login', '=', login)], limit=1)
         website_company = request.website.company_id
 
-        if user and website_company:
-            user = user.sudo()
-            user.write({
+        if user:
+            # Assign default and allowed companies
+            user.sudo().write({
                 'company_id': website_company.id,
-                'company_ids': [(6, 0, [website_company.id])]
+                'company_ids': [(6, 0, request.env['res.company'].sudo().search([]).ids)]
             })
+
+            # Assign partner company
             if user.partner_id:
                 user.partner_id.sudo().write({
                     'company_id': website_company.id
                 })
-        return user
+
+        return response
