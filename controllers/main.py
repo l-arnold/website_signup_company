@@ -1,28 +1,31 @@
 from odoo import http
 from odoo.http import request
+from odoo.addons.auth_signup.controllers.main import AuthSignupHome
 
-class CustomAuthSignup(http.Controller):
+class WebsiteSignupCompany(AuthSignupHome):
 
-    @http.route('/web/signup', type='http', auth='public', website=True, sitemap=False)
-    def web_auth_signup(self, *args, **kw):
-        response = super(CustomAuthSignup, self).web_auth_signup(*args, **kw)
+    def _get_allowed_companies(self, user):
+        """Return the list of company IDs the user is allowed to access."""
+        return user.company_ids.ids if user else []
 
-        # After signup, get the new user
-        login = kw.get('login')
-        user = request.env['res.users'].sudo().search([('login', '=', login)], limit=1)
+    def do_signup(self, qcontext):
+        user = super().do_signup(qcontext)
         website_company = request.website.company_id
 
-        if user:
-            # Assign default and allowed companies
-            user.sudo().write({
+        if user and website_company:
+            user = user.sudo()
+            allowed_company_ids = self._get_allowed_companies(user)
+
+            user.write({
                 'company_id': website_company.id,
-                'company_ids': [(6, 0, request.env['res.company'].sudo().search([]).ids)]
+                'company_ids': [(6, 0, allowed_company_ids)]
             })
 
-            # Assign partner company
-            if user.partner_id:
-                user.partner_id.sudo().write({
-                    'company_id': website_company.id
+            partner = user.partner_id.sudo()
+            if partner:
+                partner.write({
+                    'company_id': website_company.id,
+                    'company_ids': [(6, 0, allowed_company_ids)]
                 })
 
-        return response
+        return user
