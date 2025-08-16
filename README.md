@@ -52,3 +52,13 @@ Clone into your custom addons path:
 
 git clone git@github.com:l-arnold/website_signup_company.git --branch 14.0
 
+## ⚠️ Known Limitations
+
+- **Company Sync Directionality:**  
+  The sync of allowed companies flows **from `res.users` to `res.partner`**, not the reverse.  
+  If a partner's `company_ids` is modified directly (e.g., via admin UI or external module), the corresponding user's `allowed_company_ids` will **not** be updated automatically.  
+  This may lead to drift between partner and user records in multi-company setups.
+
+  _Workaround:_ Always update company access via the user record to ensure proper sync.
+
+  _Future Consideration:_ A reverse sync or audit mechanism may be added if needed.
